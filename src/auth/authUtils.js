@@ -40,13 +40,19 @@ const authentication = asyncHandler(async (req, res, next) => {
     if (userId !== decoded.userId)
       throw new AuthFailureError("Invalid Userid!");
     req.keyStore = keyStore;
-    return netx();
+    req.user = decoded;
+    return next();
   } catch (error) {
     throw error;
   }
 });
 
+const verifyJWT = async (token, secretKey) => {
+  return await JWT.verify(token, secretKey);
+};
+
 module.exports = {
   createTokenPair,
   authentication,
+  verifyJWT,
 };

@@ -4,13 +4,15 @@ const shopModel = require("../models/shop.model");
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
 const KeyTokenService = require("./keytoken.service");
-const { createTokenPair } = require("../auth/authUtils");
+const { createTokenPair, verifyJWT } = require("../auth/authUtils");
 const { getIntoData } = require("../utils");
 const {
   ConflictRequestError,
   BadRequestError,
   AuthFailureError,
+  ForbiddenError,
 } = require("../core/error.response");
+const { findByEmail } = require("./shop.service");
 
 const RoleShop = {
   SHOP: "SHOP",
@@ -20,6 +22,53 @@ const RoleShop = {
 };
 
 class AccessService {
+  static handleRefreshToken = async (refreshToken) => {
+    const foundToken = await KeyTokenService.findRefreshTokenUsed(refreshToken);
+    if (foundToken) {
+      const { userId, email } = await verifyJWT(
+        refreshToken,
+        foundToken.privateKey
+      );
+
+      await KeyTokenService.deleteKeyById(userId);
+      throw new ForbiddenError("Something wrong happen !! Please relogin.");
+    }
+
+    const holderToken = await KeyTokenService.findRefreshToken(refreshToken);
+    if (!holderToken) throw new AuthFailureError("Shop not registered!");
+
+    const { userId, email } = await verifyJWT(
+      refreshToken,
+      holderToken.privateKey
+    );
+
+    const foundShop = await findByEmail({ email });
+    if (!foundShop) throw new AuthFailureError("Shop not registered!");
+
+    const tokens = await KeyTokenService.createKeyToken(
+      {
+        userId,
+        email,
+      },
+      holderToken.privateKey,
+      holderToken.publicKey
+    );
+
+    await holderToken.update({
+      $set: {
+        refreshToken: tokens.refreshToken,
+      },
+      $addToSet: {
+        refreshTokenUsed: refreshToken,
+      },
+    });
+
+    return {
+      user: { userId, email },
+      tokens,
+    };
+  };
+
   static logout = async (keyStore) => {
     return await KeyTokenService.removeKeyById(keyStore._id);
   };
@@ -34,7 +83,7 @@ class AccessService {
     const privateKey = crypto.randomBytes(64).toString("hex");
 
     const tokens = await createTokenPair(
-      { userId: newShop._id, email },
+      { userId: foundShop._id, email },
       publicKey,
       privateKey
     );
@@ -74,11 +123,17 @@ class AccessService {
       if (newShop) {
         const publicKey = crypto.randomBytes(64).toString("hex");
         const privateKey = crypto.randomBytes(64).toString("hex");
+        const tokens = await createTokenPair(
+          { userId: newShop._id, email },
+          publicKey,
+          privateKey
+        );
 
         const keyStore = await KeyTokenService.createKeyToken({
           userId: newShop._id,
           publicKey,
           privateKey,
+          refreshToken: tokens.refreshToken,
         });
 
         if (!keyStore) {
@@ -87,13 +142,6 @@ class AccessService {
             403
           );
         }
-
-        const tokens = await createTokenPair(
-          { userId: newShop._id, email },
-          publicKey,
-          privateKey
-        );
-        console.log(tokens);
 
         return {
           code: 201,

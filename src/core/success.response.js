@@ -27,7 +27,7 @@ class SuccessResponse {
   }
 }
 
-class OK extends c {
+class OK extends SuccessResponse {
   constructor({ message, metadata }) {
     super({ message, metadata });
   }

@@ -23,7 +23,7 @@ class KeyTokenService {
           refreshToken,
         },
         options = { upsert: true, new: true };
-
+      console.log(update);
       const tokens = await keytokenModel.findOneAndUpdate(
         filter,
         update,
@@ -40,8 +40,22 @@ class KeyTokenService {
     return await keytokenModel.findOne({ user: userId }).lean();
   };
 
+  static findRefreshTokenUsed = async (refreshToken) => {
+    return await keytokenModel
+      .findOne({ refreshTokenUsed: refreshToken })
+      .lean();
+  };
+
+  static findRefreshToken = async (refreshToken) => {
+    return await keytokenModel.findOne({ refreshToken: refreshToken }).lean();
+  };
+
   static removeKeyById = async (keyStoreId) => {
     return await keytokenModel.remove(keyStoreId);
+  };
+
+  static deleteKeyById = async (userId) => {
+    return await keytokenModel.findOneAndDelete({ user: userId });
   };
 }
 
