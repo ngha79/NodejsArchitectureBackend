@@ -16,6 +16,7 @@ const discountSchema = new mongoose.Schema(
     discount_start_date: { type: Date, required: true },
     discount_end_date: { type: Date, required: true },
     discount_max_uses: { type: Number, required: true },
+    discount_max_value: { type: Number, required: true },
     discount_uses_count: { type: Number, required: true },
     discount_users_used: { type: Array, default: [] },
     discount_max_uses_per_user: { type: Number, required: true },
@@ -33,4 +34,6 @@ const discountSchema = new mongoose.Schema(
 );
 
 //Export the model
-module.exports = mongoose.model(DOCUMENT_NAME, discountSchema);
+module.exports = {
+  discount: mongoose.model(DOCUMENT_NAME, discountSchema),
+};
