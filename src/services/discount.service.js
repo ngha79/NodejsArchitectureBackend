@@ -148,11 +148,11 @@ class DiscountService {
     return discounts;
   }
 
-  static async getDiscountAmount({ discountId, shopId, userId, products }) {
+  static async getDiscountAmount({ codeId, shopId, userId, products }) {
     const foundDiscount = await checkDiscountExists({
       model: discount,
       filter: {
-        discount_code: discountId,
+        discount_code: codeId,
         discount_shopId: convertToObjectMongo(shopId),
       },
     });
