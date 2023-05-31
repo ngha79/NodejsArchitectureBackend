@@ -1,10 +1,11 @@
 "use strict";
 
 const { findCartById } = require("../models/repositories/cart.repo");
-const { BadRequestError } = require("../core/error.response");
+const { BadRequestError, NotFoundError } = require("../core/error.response");
 const { getDiscountAmount } = require("./discount.service");
 const { acquireLock, releaseLock } = require("./redis.service");
 const { order } = require("../models/oder.model");
+const { findOderById } = require("../models/repositories/oder.repo");
 
 class CheckoutService {
   static async checkoutReview({ cartId, userId, shop_order_ids = [] }) {
@@ -112,13 +113,28 @@ class CheckoutService {
     return newOder;
   }
 
-  static async getOderByUser({ userId }) {}
+  static async getOderByUser({ userId }) {
+    return await order.find({ order_userId: userId }).lean();
+  }
 
-  static async getOneOderByUser(userId) {}
+  static async getOneOderByUser({ orderId }) {
+    return await order.findById(orderId).lean();
+  }
 
-  static async cancelOderByUser() {}
+  static async cancelOderByUser(orderId) {
+    const foundOrder = await findOderById(orderId);
+    if (!foundOrder) throw new NotFoundError("Oder does not exist!");
+    const { order_status } = foundOder;
+    if (order_status === "pending") {
+      foundOrder.order_status = "cancelled";
+      await foundOrder.save(foundOrder);
+      return foundOrder;
+    } else {
+      throw new BadRequestError("You can not cancel oder!");
+    }
+  }
 
-  static async updateOderStatusByShop() {}
+  static async updateOderStatusByShop({ oderId }) {}
 }
 
 module.exports = CheckoutService;
